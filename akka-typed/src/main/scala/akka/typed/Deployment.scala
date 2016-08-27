@@ -91,8 +91,3 @@ final case class DispatcherFromExecutor(executor: Executor, next: DeploymentConf
 final case class DispatcherFromExecutionContext(ec: ExecutionContext, next: DeploymentConfig = EmptyDeploymentConfig) extends DispatcherSelector {
   override def ++(next: DeploymentConfig): DeploymentConfig = copy(next = next)
 }
-
-trait Dispatchers {
-  def lookup(selector: DispatcherSelector): ExecutionContextExecutor
-  def shutdown(): Unit
-}

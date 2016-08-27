@@ -3,13 +3,13 @@
  */
 package akka.typed
 
-import akka.event.{ LoggingFilter, LoggingAdapter, EventStream }
 import scala.concurrent.ExecutionContext
-import akka.{ actor ⇒ a }
+import akka.{ actor ⇒ a, event ⇒ e }
 import java.util.concurrent.ThreadFactory
 import com.typesafe.config.{ Config, ConfigFactory }
 import scala.concurrent.{ ExecutionContextExecutor, Future }
 import akka.typed.adapter.{ PropsAdapter, ActorSystemAdapter }
+import akka.util.Timeout
 
 /**
  * An ActorSystem is home to a hierarchy of Actors. It is created using
@@ -29,15 +29,15 @@ trait ActorSystem[-T] extends ActorRef[T] { this: internal.ActorRefImpl[T] ⇒
   /**
    * The core settings extracted from the supplied configuration.
    */
-  def settings: akka.actor.ActorSystem.Settings
+  def settings: Settings
 
   /**
    * Log the configuration.
    */
   def logConfiguration(): Unit
 
-  def logFilter: LoggingFilter
-  def log: LoggingAdapter
+  def logFilter: e.LoggingFilter
+  def log: e.LoggingAdapter
 
   /**
    * Start-up time in milliseconds since the epoch.
@@ -110,6 +110,8 @@ trait ActorSystem[-T] extends ActorRef[T] { this: internal.ActorRefImpl[T] ⇒
    * The format of the string is subject to change, i.e. no stable “API”.
    */
   def printTree: String
+
+  def systemActorOf[U](behavior: Behavior[U], name: String, deployment: DeploymentConfig = EmptyDeploymentConfig)(implicit timeout: Timeout): Future[ActorRef[U]]
 }
 
 object ActorSystem {
@@ -154,4 +156,42 @@ object ActorSystem {
    * Akka Typed [[Behavior]].
    */
   def wrap(untyped: a.ActorSystem): ActorSystem[Nothing] = new ActorSystemAdapter(untyped.asInstanceOf[a.ActorSystemImpl])
+}
+
+final class Settings(val config: Config, val untyped: a.ActorSystem.Settings, val name: String) {
+  import collection.JavaConverters._
+
+  def this(_cl: ClassLoader, _config: Config, name: String) = this({
+    val config = _config.withFallback(ConfigFactory.defaultReference(_cl))
+    config.checkValid(ConfigFactory.defaultReference(_cl), "akka")
+    config
+  }, new a.ActorSystem.Settings(_cl, _config, name), name)
+
+  def this(untyped: a.ActorSystem.Settings) = this(untyped.config, untyped, untyped.name)
+
+  private var foundSettings = List.empty[String]
+  private def found(name: String, value: String): Unit = foundSettings ::= s"$name = $value"
+  private def getS(name: String, path: String): String = {
+    val value = config.getString(path)
+    found(name, value)
+    value
+  }
+  private def getSL(name: String, path: String): List[String] = {
+    val value = config.getStringList(path)
+    found(name, value.toString)
+    value.asScala.toList
+  }
+  private def getI(name: String, path: String): Int = {
+    val value = config.getInt(path)
+    found(name, value.toString)
+    value
+  }
+
+  val Loggers = getSL("Loggers", "akka.typed.loggers")
+  val LoggingFilter = getS("LoggingFilter", "akka.typed.logging-filter")
+  val DefaultMailboxCapacity = getI("DefaultMailboxCapacity", "akka.typed.mailbox-capacity")
+
+  foundSettings = foundSettings.reverse
+
+  override def toString: String = s"Settings($name,\n  ${foundSettings.mkString("\n  ")})"
 }

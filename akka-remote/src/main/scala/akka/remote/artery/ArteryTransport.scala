@@ -610,7 +610,7 @@ private[remote] class ArteryTransport(_system: ExtendedActorSystem, _provider: R
                 } else
                   log.debug(
                     "Discarding incoming ActorRef compression advertisement from [{}] that was " +
-                      "prepared for another incarnation [{}] than current [{}], table: [{}]",
+                      "prepared for another incarnation with uid [{}] than current uid [{}], table: [{}]",
                     from, table.originUid, localAddress.uid, table)
               case ActorRefCompressionAdvertisementAck(from, tableVersion) ⇒
                 inboundCompressions.foreach(_.confirmActorRefCompressionAdvertisement(from.uid, tableVersion))
@@ -629,7 +629,7 @@ private[remote] class ArteryTransport(_system: ExtendedActorSystem, _provider: R
                 } else
                   log.debug(
                     "Discarding incoming Class Manifest compression advertisement from [{}] that was " +
-                      "prepared for another incarnation [{}] than current [{}], table: [{}]",
+                      "prepared for another incarnation with uid [{}] than current uid [{}], table: [{}]",
                     from, table.originUid, localAddress.uid, table)
               case ClassManifestCompressionAdvertisementAck(from, tableVersion) ⇒
                 inboundCompressions.foreach(_.confirmClassManifestCompressionAdvertisement(from.uid, tableVersion))
@@ -732,7 +732,7 @@ private[remote] class ArteryTransport(_system: ExtendedActorSystem, _provider: R
         log.error(cause, s"{} failed after shutdown. {}", streamName, cause.getMessage)
       case _: AbruptTerminationException ⇒ // ActorSystem shutdown
       case cause ⇒
-        inboundCompressions.foreach(_.close())
+        _inboundCompressions.foreach(_.close())
         _inboundCompressions = None
         if (restartCounter.restart()) {
           log.error(cause, "{} failed. Restarting it. {}", streamName, cause.getMessage)
@@ -767,7 +767,7 @@ private[remote] class ArteryTransport(_system: ExtendedActorSystem, _provider: R
       taskRunner.stop()
       topLevelFREvents.loFreq(Transport_Stopped, NoMetaData)
 
-      inboundCompressions.foreach(_.close())
+      _inboundCompressions.foreach(_.close())
       _inboundCompressions = None
 
       if (aeronErrorLogTask != null) {

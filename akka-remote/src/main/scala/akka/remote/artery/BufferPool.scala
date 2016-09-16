@@ -239,10 +239,13 @@ private[remote] final class HeaderBuilderImpl(
   }
   override def isNoSender: Boolean =
     (_senderActorRef eq null) && _senderActorRefIdx == DeadLettersCode
-  override def senderActorRef(originUid: Long): OptionVal[ActorRef] =
+  override def senderActorRef(originUid: Long): OptionVal[ActorRef] = {
+    // we treat deadLetters as always present, but not included in table
     if ((_senderActorRef eq null) && !isNoSender)
       inboundCompression.decompressActorRef(originUid, inboundActorRefCompressionTableVersion, _senderActorRefIdx)
     else OptionVal.None
+  }
+
   def senderActorRefPath: OptionVal[String] =
     OptionVal(_senderActorRef)
 
@@ -260,10 +263,12 @@ private[remote] final class HeaderBuilderImpl(
     } else
       _recipientActorRef = toSerializationFormat.getOrCompute(ref)
   }
-  def recipientActorRef(originUid: Long): OptionVal[ActorRef] =
+  def recipientActorRef(originUid: Long): OptionVal[ActorRef] = {
+    // we treat deadLetters as always present, but not included in table
     if ((_recipientActorRef eq null) && !isNoRecipient)
       inboundCompression.decompressActorRef(originUid, inboundActorRefCompressionTableVersion, _recipientActorRefIdx)
     else OptionVal.None
+  }
   def recipientActorRefPath: OptionVal[String] =
     OptionVal(_recipientActorRef)
 

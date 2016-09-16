@@ -26,6 +26,8 @@ private[akka] object ArteryMessageSerializer {
   private val SystemMessageEnvelopeManifest = "j"
   private val SystemMessageDeliveryAckManifest = "k"
   private val SystemMessageDeliveryNackManifest = "l"
+
+  private final val DeadLettersRepresentation = ""
 }
 
 /** INTERNAL API */
@@ -94,11 +96,11 @@ private[akka] final class ArteryMessageSerializer(val system: ExtendedActorSyste
     Quarantined(deserializeUniqueAddress(quarantined.getFrom), deserializeUniqueAddress(quarantined.getTo))
 
   def serializeActorRef(ref: ActorRef): String =
-    if ((ref eq ActorRef.noSender) || (ref eq system.deadLetters)) ""
+    if ((ref eq ActorRef.noSender) || (ref eq system.deadLetters)) DeadLettersRepresentation
     else Serialization.serializedActorPath(ref)
 
   def deserializeActorRef(str: String): ActorRef =
-    if (str == "") system.deadLetters
+    if (str == DeadLettersRepresentation) system.deadLetters
     else system.provider.resolveActorRef(str)
 
   def serializeActorRefCompressionAdvertisement(adv: ActorRefCompressionAdvertisement): ArteryControlFormats.CompressionTableAdvertisement =
